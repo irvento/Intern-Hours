@@ -72,8 +72,28 @@ function initDarkModeToggle() {
     toggle.checked = isDark;
 
     toggle.addEventListener('change', function() {
-        toggleDarkMode();
-        showToast('Theme updated');
+        const newPref = this.checked ? 'dark' : 'light';
+        localStorage.setItem('theme-pref', newPref);
+        if (typeof window.applyTheme === 'function') {
+            window.applyTheme(newPref);
+        }
+        
+        // Sync with backend
+        const isDarkModeVal = newPref === 'dark' ? 1 : 0;
+        const formData = new FormData();
+        formData.append('is_darkmode', isDarkModeVal);
+
+        fetch(apiBasePath + 'api/profile_update.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Theme updated');
+            }
+        })
+        .catch(err => console.error('Failed to sync theme with backend:', err));
     });
 }
 

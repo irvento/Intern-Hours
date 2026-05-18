@@ -37,7 +37,7 @@ $base_url = "../";
         });
 
         function loadInterns() {
-            fetch('../../../api/interns.php')
+            fetch('<?php echo $base_url; ?>api/interns.php')
                 .then(response => response.json())
                 .then(data => {
                     const list = document.getElementById('interns-list');
@@ -64,7 +64,7 @@ $base_url = "../";
                                 </div>
                                 <div class="mt-4 flex justify-between items-center">
                                     <span class="text-xs text-gray-500">Intern</span>
-                                    <a href="intern-logs.php?id=${intern.id}" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">View Logs →</a>
+                                    <a href="pages/supervisor/intern-logs.php?id=${intern.id}" class="text-blue-600 hover:text-blue-800 text-sm font-semibold">View Logs →</a>
                                 </div>
                             `;
                             list.appendChild(card);

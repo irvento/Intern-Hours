@@ -10,15 +10,42 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];
-$is_darkmode = isset($_POST['is_darkmode']) && $_POST['is_darkmode'] === '1' ? '1' : '0';
+
+$updates = [];
+$params = [];
+
+if (isset($_POST['is_darkmode'])) {
+    $val = (int)$_POST['is_darkmode'];
+    if ($val === 0 || $val === 1 || $val === 2) {
+        $updates[] = "is_darkmode = ?";
+        $params[] = $val;
+        $_SESSION['is_darkmode'] = $val;
+    }
+}
+
+if (isset($_POST['is_public'])) {
+    $val = (int)$_POST['is_public'];
+    if ($val === 0 || $val === 1) {
+        $updates[] = "is_public = ?";
+        $params[] = $val;
+    }
+}
+
+if (empty($updates)) {
+    echo json_encode(['success' => false, 'error' => 'No fields to update']);
+    exit;
+}
 
 try {
-    $stmt = $pdo->prepare("UPDATE users SET is_darkmode = ? WHERE id = ?");
-    $stmt->execute([$is_darkmode, $user_id]);
+    $params[] = $user_id;
+    $sql = "UPDATE users SET " . implode(", ", $updates) . " WHERE id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     
-    $_SESSION['is_darkmode'] = ($is_darkmode === '1');
-    
-    echo json_encode(['success' => true, 'is_darkmode' => $_SESSION['is_darkmode']]);
+    echo json_encode([
+        'success' => true, 
+        'is_darkmode' => $_SESSION['is_darkmode'] ?? null
+    ]);
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
