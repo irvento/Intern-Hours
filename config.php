@@ -47,7 +47,75 @@ try {
     // Auto-migration: Ensure columns exist
     $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE");
     $pdo->exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_darkmode BOOLEAN DEFAULT FALSE");
+
+    // Auto-migration: Create biometrics and attendance log tables
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS biometric_credentials (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            credential_id VARCHAR(255) NOT NULL UNIQUE,
+            public_key TEXT NOT NULL,
+            sign_count INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS attendance_logs (
+            log_id INT AUTO_INCREMENT PRIMARY KEY,
+            employee_id INT NOT NULL,
+            device_token VARCHAR(255) NOT NULL,
+            action_type ENUM('clock_in', 'clock_out') NOT NULL,
+            gps_latitude DECIMAL(10, 8),
+            gps_longitude DECIMAL(11, 8),
+            server_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 } catch (PDOException $e) {
     die("Connection failed: " . $e->getMessage());
+}
+
+// Parse Browser from User Agent
+function get_browser_from_ua($user_agent) {
+    if (empty($user_agent)) return 'Unknown Browser';
+    
+    if (preg_match('/chrome|crios/i', $user_agent) && !preg_match('/opr|opios/i', $user_agent) && !preg_match('/edge|edg/i', $user_agent)) {
+        return 'Google Chrome';
+    } elseif (preg_match('/safari/i', $user_agent) && !preg_match('/chrome|crios/i', $user_agent) && !preg_match('/android/i', $user_agent)) {
+        return 'Apple Safari';
+    } elseif (preg_match('/firefox|fxios/i', $user_agent)) {
+        return 'Mozilla Firefox';
+    } elseif (preg_match('/edge|edg|edgios|edga/i', $user_agent)) {
+        return 'Microsoft Edge';
+    } elseif (preg_match('/opera|opr|opios/i', $user_agent)) {
+        return 'Opera';
+    } elseif (preg_match('/msie|trident/i', $user_agent)) {
+        return 'Internet Explorer';
+    }
+    
+    return 'Other Browser';
+}
+
+// Parse Device from User Agent
+function get_device_from_ua($user_agent) {
+    if (empty($user_agent)) return 'Unknown Device';
+    
+    if (preg_match('/iphone/i', $user_agent)) {
+        return 'iPhone';
+    } elseif (preg_match('/ipad/i', $user_agent)) {
+        return 'iPad';
+    } elseif (preg_match('/android/i', $user_agent)) {
+        return 'Android Device';
+    } elseif (preg_match('/windows/i', $user_agent)) {
+        return 'Windows PC';
+    } elseif (preg_match('/macintosh|mac os x/i', $user_agent)) {
+        return 'Mac';
+    } elseif (preg_match('/linux/i', $user_agent)) {
+        return 'Linux PC';
+    }
+    
+    return 'Desktop PC';
 }
 ?>

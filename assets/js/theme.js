@@ -3,6 +3,28 @@
  */
 
 (function() {
+    // Check if we are on the landing page (index.php or /)
+    const isLandingPage = window.location.pathname.endsWith('index.php') || 
+                         window.location.pathname.endsWith('/') || 
+                         window.location.pathname === '';
+
+    if (isLandingPage) {
+        document.documentElement.classList.remove('dark');
+        document.body && document.body.classList.remove('dark-mode');
+        return;
+    }
+
+    // Determine if we should use dark mode
+    // Rule: Must be logged in AND have the preference enabled in session
+    // fallback to localStorage ONLY if we want to support dark mode on login page (user said no)
+    
+    let shouldBeDark = false;
+    
+    if (typeof isLoggedIn !== 'undefined' && isLoggedIn) {
+        // Use session preference if logged in
+        shouldBeDark = sessionDarkMode;
+        // Sync localStorage for consistency
+        localStorage.setItem('theme', shouldBeDark ? 'dark' : 'light');
     // Determine user theme preference:
     // 1. If logged in, check sessionThemePref: 0 = light, 1 = dark, 2 = system.
     // 2. Otherwise check localStorage 'theme-pref': 'light', 'dark', 'system'.

@@ -62,6 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unset($_SESSION['failed_attempts']);
                 unset($_SESSION['login_blocked_until']);
 
+                // Log login to login_logs table
+                $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+                $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                $browser = get_browser_from_ua($ua);
+                $device = get_device_from_ua($ua);
+
+                $log_stmt = $pdo->prepare("INSERT INTO login_logs (user_id, ip_address, browser, device) VALUES (?, ?, ?, ?)");
+                $log_stmt->execute([$user['id'], $ip_address, $browser, $device]);
+
                 // Return success response with redirect URL
                 $redirectUrl = '../views/feed.php?page=dashboard';
                 echo json_encode(['success' => true, 'redirect' => $redirectUrl]);

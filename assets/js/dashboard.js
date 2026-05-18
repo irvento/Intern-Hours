@@ -789,13 +789,18 @@ function updateStats() {
     String(today.getDate()).padStart(2, "0");
   const todayHoursEl = document.getElementById("today-hours");
   if (todayHoursEl)
-    todayHoursEl.textContent = (hoursData[todayStr] || 0).toFixed(1);
+    todayHoursEl.textContent = parseFloat(hoursData[todayStr] || 0).toFixed(1);
 
   // Average
   const daysLogged = Object.keys(monthHoursData).length;
   const average = daysLogged > 0 ? monthTotal / daysLogged : 0;
   const averageEl = document.getElementById("average-hours");
   if (averageEl) averageEl.textContent = average.toFixed(1);
+
+  // Render Charts
+  if (typeof renderDashboardCharts === "function") {
+    renderDashboardCharts();
+  }
 }
 
 function updateTotalHours() {
@@ -804,6 +809,11 @@ function updateTotalHours() {
     0,
   );
   document.getElementById("total-hours").textContent = total.toFixed(1);
+
+  // Render Charts
+  if (typeof renderDashboardCharts === "function") {
+    renderDashboardCharts();
+  }
 }
 
 function applyFilter() {
@@ -986,4 +996,276 @@ function downloadPDF() {
       btn.innerHTML = originalText;
     });
 }
+
+// =========================================================================
+// 📊 INTERACTIVE CHARTS & BURNDOWN ENGINE (Powered by Chart.js)
+// =========================================================================
+
+let myProgressChart = null;
+let myBarChart = null;
+
+function renderDashboardCharts() {
+  const progressCanvas = document.getElementById("progressChart");
+  const barCanvas = document.getElementById("hoursBarChart");
+  
+  if (!progressCanvas || !barCanvas) return;
+  if (typeof Chart === "undefined") return;
+
+  // 1. Calculate stats
+  const totalLogged = Object.values(allHoursData).reduce((sum, val) => sum + parseFloat(val), 0);
+  const target = typeof hourGoal !== "undefined" ? hourGoal : 480;
+  
+  const percent = Math.min((totalLogged / target) * 100, 100);
+  const displayPercent = (totalLogged / target) * 100;
+  
+  const remaining = Math.max(target - totalLogged, 0);
+  
+  // Calculate average of days with logged hours
+  const loggedDays = Object.values(allHoursData).filter(val => parseFloat(val) > 0);
+  const totalLoggedDaysCount = loggedDays.length;
+  const dailyAverage = totalLoggedDaysCount > 0 ? totalLogged / totalLoggedDaysCount : 0;
+  
+  // Update HTML elements
+  const percentEl = document.getElementById("chart-percent");
+  if (percentEl) percentEl.textContent = `${displayPercent.toFixed(0)}%`;
+  
+  const ratioEl = document.getElementById("chart-ratio");
+  if (ratioEl) ratioEl.textContent = `${totalLogged.toFixed(1)}/${target}h`;
+  
+  const remainingEl = document.getElementById("burndown-remaining");
+  if (remainingEl) remainingEl.textContent = `${remaining.toFixed(1)} hrs`;
+  
+  const avgEl = document.getElementById("burndown-avg");
+  if (avgEl) avgEl.textContent = `${dailyAverage.toFixed(1)} hrs/day`;
+  
+  const compEl = document.getElementById("burndown-completion");
+  if (compEl) {
+    compEl.textContent = calculateEstimatedCompletion(remaining, dailyAverage);
+  }
+
+  const isDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark-mode');
+
+  // 2. Render Doughnut Gauge Chart
+  if (myProgressChart) {
+    myProgressChart.destroy();
+  }
+  
+  myProgressChart = new Chart(progressCanvas, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [totalLogged, remaining],
+        backgroundColor: ['#2563eb', isDark ? '#374151' : '#e2e8f0'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      cutout: '80%',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      }
+    }
+  });
+
+  // 3. Render Monthly Bar Chart
+  if (myBarChart) {
+    myBarChart.destroy();
+  }
+
+  // Get days in current month
+  const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+  const labels = [];
+  const barData = [];
+  
+  for (let day = 1; day <= lastDay; day++) {
+    const dateStr = String(day).padStart(2, "0");
+    const fullDate = currentYear + "-" + String(currentMonth).padStart(2, "0") + "-" + dateStr;
+    labels.push(day);
+    barData.push(parseFloat(monthHoursData[fullDate] || 0));
+  }
+
+  myBarChart = new Chart(barCanvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Hours Logged',
+        data: barData,
+        backgroundColor: 'rgba(37, 99, 235, 0.75)',
+        hoverBackgroundColor: '#2563eb',
+        borderRadius: 4,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { 
+            color: isDark ? '#94a3b8' : '#64748b',
+            font: { size: 10 } 
+          }
+        },
+        y: {
+          grid: { color: isDark ? '#374151' : '#f1f5f9' },
+          ticks: { 
+            color: isDark ? '#94a3b8' : '#64748b',
+            font: { size: 10 }, 
+            stepSize: 2 
+          }
+        }
+      }
+    }
+  });
+}
+
+function calculateEstimatedCompletion(remainingHours, dailyAvg) {
+  if (remainingHours <= 0) return "Goal Met";
+  if (dailyAvg <= 0) return "N/A";
+
+  const daysNeeded = Math.ceil(remainingHours / dailyAvg);
+  let currentDate = new Date();
+  let addedDays = 0;
+  let safetyLoop = 0;
+
+  const daysOfWeekNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const activeDaysList = (typeof dutyDays !== 'undefined' ? dutyDays : 'Monday,Tuesday,Wednesday,Thursday,Friday').split(',');
+
+  while (addedDays < daysNeeded && safetyLoop < 1000) {
+    safetyLoop++;
+    currentDate.setDate(currentDate.getDate() + 1);
+    
+    // Check if on-duty day
+    const dayName = daysOfWeekNames[currentDate.getDay()];
+    if (!activeDaysList.includes(dayName)) {
+      continue; // Skip off-duty days
+    }
+
+    // Check if holiday
+    const dateStr = currentDate.getFullYear() + "-" + 
+                    String(currentDate.getMonth() + 1).padStart(2, '0') + "-" + 
+                    String(currentDate.getDate()).padStart(2, '0');
+    const monthDay = String(currentDate.getMonth() + 1).padStart(2, '0') + "-" + 
+                     String(currentDate.getDate()).padStart(2, '0');
+    
+    if (movableHolidays[dateStr] || fixedHolidays[monthDay]) {
+      continue; // Skip holidays
+    }
+
+    addedDays++;
+  }
+
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return currentDate.toLocaleDateString('en-US', options);
+}
+
+// =========================================================================
+// 🎯 INTERNSHIP GOAL MODAL EVENT HANDLERS
+// =========================================================================
+document.addEventListener("DOMContentLoaded", () => {
+  const goalModal = document.getElementById("goal-modal");
+  const openGoalModalBtn = document.getElementById("open-goal-modal-btn");
+  const closeGoalModalBtn = document.getElementById("close-goal-modal-btn");
+  const cancelGoalModalBtn = document.getElementById("cancel-goal-modal-btn");
+  const goalModalForm = document.getElementById("goal-modal-form");
+  const goalModalAlert = document.getElementById("goal-modal-alert");
+
+  if (!goalModal) return;
+
+  function openModal() {
+    goalModal.classList.remove("hidden");
+    goalModal.classList.add("flex");
+    if (goalModalAlert) {
+      goalModalAlert.classList.add("hidden");
+      goalModalAlert.textContent = "";
+    }
+  }
+
+  function closeModal() {
+    goalModal.classList.add("hidden");
+    goalModal.classList.remove("flex");
+  }
+
+  if (openGoalModalBtn) openGoalModalBtn.addEventListener("click", openModal);
+  if (closeGoalModalBtn) closeGoalModalBtn.addEventListener("click", closeModal);
+  if (cancelGoalModalBtn) cancelGoalModalBtn.addEventListener("click", closeModal);
+
+  // Close modal when clicking outside content box
+  goalModal.addEventListener("click", (e) => {
+    if (e.target === goalModal) {
+      closeModal();
+    }
+  });
+
+  if (goalModalForm) {
+    goalModalForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const hourGoal = document.getElementById("modal_hour_goal").value;
+      const startingDate = document.getElementById("modal_starting_date").value;
+      const checkedBoxes = Array.from(document.querySelectorAll('input[name="modal_duty_days[]"]:checked'));
+      
+      if (checkedBoxes.length === 0) {
+        if (goalModalAlert) {
+          goalModalAlert.className = "p-4 rounded-xl text-xs font-bold mb-5 bg-red-50 text-red-600 border border-red-100";
+          goalModalAlert.textContent = "Please select at least one duty day.";
+          goalModalAlert.classList.remove("hidden");
+        }
+        return;
+      }
+
+      const dutyDays = checkedBoxes.map(cb => cb.value).join(",");
+      const submitBtn = goalModalForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.textContent;
+
+      // Show loading spinner/state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="inline-block animate-spin mr-2">⏳</span> Saving...`;
+
+      const formData = new FormData();
+      formData.append("hour_goal", hourGoal);
+      formData.append("starting_date", startingDate);
+      formData.append("duty_days", dutyDays);
+
+      fetch("../api/burnout_update.php", {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (goalModalAlert) {
+            goalModalAlert.className = "p-4 rounded-xl text-xs font-bold mb-5 bg-green-50 text-green-600 border border-green-100";
+            goalModalAlert.textContent = "Goal saved successfully! Reloading...";
+            goalModalAlert.classList.remove("hidden");
+          }
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+        } else {
+          throw new Error(data.error || "Failed to save goal settings.");
+        }
+      })
+      .catch(err => {
+        console.error("Error updating goal:", err);
+        if (goalModalAlert) {
+          goalModalAlert.className = "p-4 rounded-xl text-xs font-bold mb-5 bg-red-50 text-red-600 border border-red-100";
+          goalModalAlert.textContent = err.message;
+          goalModalAlert.classList.remove("hidden");
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+      });
+    });
+  }
+});
+
 

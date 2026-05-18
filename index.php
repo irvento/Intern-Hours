@@ -88,7 +88,7 @@ if (isset($_SESSION['user_id'])) {
           Track Your <span class="text-brand-gradient">OJT Hours</span>
         </h1>
         <p class="text-base sm:text-lg md:text-xl text-zinc-300 mb-10 max-w-3xl mx-auto leading-relaxed">
-          OJT tracker ni Teddy &mdash; kung gusto mo contribute, clone ra sa
+          GitHub Repository: 
           <a href="https://github.com/Tedeyy/Intern-Hours" target="_blank" rel="noopener"
             class="inline-flex items-center gap-1.5 text-white font-semibold underline underline-offset-4 decoration-white/50 hover:text-indigo-300 hover:decoration-indigo-300 transition">
             <svg class="inline w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -96,13 +96,13 @@ if (isset($_SESSION['user_id'])) {
             </svg>
             Tedeyy/Intern-Hours
           </a>
-          <span class="block mt-3 text-white font-medium">tas para ma merge inyon contribution make no mistakes and also need mog 50 pesos payment 🤑🤑</span>
+          <span class="block mt-3 text-white font-medium">OJT Tracker is a free and open-source platform designed to help interns track their hours, submit reports, and stay connected. Built for interns by interns.</span>
         </p>
 
         <!-- CTA Buttons -->
         <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
           <a href="views/feed.php?page=register" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.5)] hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 text-center">
-            Start Tracking for 50 Bucks
+            Start Tracking
           </a>
           <a href="#how-it-works" class="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold transition-all text-center">
             Learn More
