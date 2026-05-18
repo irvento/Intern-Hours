@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['office_id'] = $user['office_id'];
                 $_SESSION['organization_id'] = $user['organization_id'];
-                $_SESSION['is_darkmode'] = (bool)($user['is_darkmode'] ?? false);
+                $_SESSION['is_darkmode'] = (int)($user['is_darkmode'] ?? 0);
 
                 // Fetch names for session
                 $stmt = $pdo->prepare("SELECT office_name FROM office WHERE id = ?");

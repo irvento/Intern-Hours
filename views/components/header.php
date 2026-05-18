@@ -17,7 +17,8 @@
         window.tailwind && (tailwind.config = { darkMode: 'class' });
         
         // Pass session dark mode preference to JS
-        const sessionDarkMode = <?php echo isset($_SESSION['is_darkmode']) && $_SESSION['is_darkmode'] ? 'true' : 'false'; ?>;
+        const sessionThemePref = <?php echo isset($_SESSION['is_darkmode']) ? (int)$_SESSION['is_darkmode'] : 'null'; ?>;
+        const sessionDarkMode = sessionThemePref === 1;
         const isLoggedIn = <?php echo isset($_SESSION['user_id']) ? 'true' : 'false'; ?>;
     </script>
     <script src="<?php echo $base_url ?? ''; ?>assets/js/theme.js"></script>

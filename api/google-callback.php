@@ -81,6 +81,9 @@ if ($user) {
     $_SESSION['user_name'] = $user['name'];
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_role'] = $user['role'];
+    $_SESSION['is_darkmode'] = (int)($user['is_darkmode'] ?? 0);
+    $_SESSION['office_id'] = $user['office_id'] ?? null;
+    $_SESSION['organization_id'] = $user['organization_id'] ?? null;
     
     // Update tokens
     $stmt = $pdo->prepare("UPDATE users SET google_access_token = ?, google_refresh_token = ? WHERE id = ?");
@@ -105,6 +108,9 @@ if ($user) {
         $_SESSION['user_name'] = $existing_user['name'];
         $_SESSION['user_email'] = $existing_user['email'];
         $_SESSION['user_role'] = $existing_user['role'];
+        $_SESSION['is_darkmode'] = (int)($existing_user['is_darkmode'] ?? 0);
+        $_SESSION['office_id'] = $existing_user['office_id'] ?? null;
+        $_SESSION['organization_id'] = $existing_user['organization_id'] ?? null;
         
         header("Location: ../views/feed.php?page=dashboard");
         exit;
@@ -119,6 +125,7 @@ if ($user) {
         $_SESSION['user_name'] = $name;
         $_SESSION['user_email'] = $email;
         $_SESSION['user_role'] = 'Intern';
+        $_SESSION['is_darkmode'] = 0;
         
         header("Location: ../views/feed.php?page=dashboard");
         exit;
